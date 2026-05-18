@@ -27,7 +27,7 @@ impl DanmakuService {
         let running = Arc::new(Mutex::new(false));
         let running_clone = running.clone();
 
-        tokio::spawn(async move {
+        tauri::async_runtime::spawn(async move {
             let mut ws_task: Option<tokio::task::JoinHandle<()>> = None;
             let mut room_id: Option<u64> = None;
 
@@ -61,7 +61,7 @@ impl DanmakuService {
                     DanmakuCommand::SendDanmaku { msg } => {
                         let api_clone = api.clone();
                         let rid = room_id;
-                        tokio::spawn(async move {
+                        tauri::async_runtime::spawn(async move {
                             if let Some(rid) = rid {
                                 let api_guard = api_clone.lock().await;
                                 if let Some(csrf) = api_guard.get_csrf() {
