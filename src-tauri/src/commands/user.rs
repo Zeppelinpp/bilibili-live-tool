@@ -43,3 +43,17 @@ pub async fn logout(uid: u64, state: State<'_, AppState>) -> Result<(), String> 
     let mut session = state.session.lock().await;
     crate::services::user_service::UserService::logout(&mut config, &mut session, &mut api, uid).map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub async fn clear_session(state: State<'_, AppState>) -> Result<(), String> {
+    let mut api = state.api.lock().await;
+    let mut config = state.config.lock().await;
+    let mut session = state.session.lock().await;
+    session.uid = None;
+    session.room_id = None;
+    session.csrf = None;
+    session.is_live = false;
+    api.update_cookies(std::collections::HashMap::new());
+    config.data_mut().current_uid = None;
+    config.save().map_err(|e| e.to_string())
+}

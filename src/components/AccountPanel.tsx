@@ -42,7 +42,12 @@ export default function AccountPanel() {
         <h2 className="text-[11px] font-semibold uppercase tracking-wider text-stone-400 mb-3">当前账户</h2>
         {user && (
           <div className="p-4 rounded-xl bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-stone-400 flex items-center justify-center text-white font-semibold">{user.uname[0]}</div>
+            <img
+              src={user.face || 'https://static.hdslb.com/images/member/noface.gif'}
+              className="w-10 h-10 rounded-full object-cover"
+              referrerPolicy="no-referrer"
+              alt=""
+            />
             <div className="flex-1">
               <div className="text-[13px] font-medium">{user.uname}</div>
               <div className="text-[12px] text-stone-400">UID: {user.uid}</div>
@@ -57,7 +62,12 @@ export default function AccountPanel() {
         <div className="space-y-2">
           {accounts.map((acc) => (
             <div key={acc.uid} className="flex items-center gap-3 p-3 rounded-xl bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
-              <div className="w-8 h-8 rounded-full bg-stone-300 dark:bg-stone-700 flex items-center justify-center text-white text-xs font-semibold">{acc.uname[0]}</div>
+              <img
+                src={acc.face || 'https://static.hdslb.com/images/member/noface.gif'}
+                className="w-8 h-8 rounded-full object-cover"
+                referrerPolicy="no-referrer"
+                alt=""
+              />
               <div className="flex-1 min-w-0">
                 <div className="text-[13px]">{acc.uname}</div>
                 <div className="text-[12px] text-stone-400">UID: {acc.uid}</div>

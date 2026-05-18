@@ -29,6 +29,10 @@ export async function logout(uid: number): Promise<void> {
   return await invoke('logout', { uid });
 }
 
+export async function clearSession(): Promise<void> {
+  return await invoke('clear_session');
+}
+
 export async function getPartitions(): Promise<PartitionMap> {
   return await invoke('get_partitions');
 }

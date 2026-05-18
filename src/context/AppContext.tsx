@@ -1,4 +1,5 @@
-import { createContext, useContext, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { listen } from '@tauri-apps/api/event';
 import type { DanmakuMessage, StreamCodeData, UserConfig } from '@/types/api';
 
 // ---------- UserContext ----------
@@ -68,11 +69,24 @@ function DanmakuProvider({ children }: { children: ReactNode }) {
   const [danmakuList, setDanmakuList] = useState<DanmakuItem[]>([]);
   const nextId = useRef(0);
 
-  const addDanmaku = (msg: DanmakuMessage) => {
+  const addDanmaku = useCallback((msg: DanmakuMessage) => {
     setDanmakuList((prev) => [...prev, { id: nextId.current++, data: msg }].slice(-500));
-  };
+  }, []);
 
-  const clearDanmaku = () => setDanmakuList([]);
+  const clearDanmaku = useCallback(() => setDanmakuList([]), []);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    listen('danmu-message', (event) => {
+      const msg = event.payload as DanmakuMessage;
+      setDanmakuList((prev) => [...prev, { id: nextId.current++, data: msg }].slice(-500));
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => {
+      unlisten?.();
+    };
+  }, []);
 
   return (
     <DanmakuContext.Provider value={{ danmakuList, addDanmaku, clearDanmaku }}>
@@ -111,11 +125,27 @@ function UIProvider({ children }: { children: ReactNode }) {
   const [consoleOpen, setConsoleOpen] = useState(true);
   const nextId = useRef(0);
 
-  const addLog = (log: string) => {
-    setConsoleLogs((prev) => [...prev, { id: nextId.current++, text: log }].slice(-200));
-  };
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const initialDark = mq.matches;
+    setIsDark(initialDark);
+    if (initialDark) document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
 
-  const clearLogs = () => setConsoleLogs([]);
+    const handler = (e: MediaQueryList | MediaQueryListEvent) => {
+      setIsDark(e.matches);
+      if (e.matches) document.documentElement.classList.add('dark');
+      else document.documentElement.classList.remove('dark');
+    };
+    mq.addListener(handler);
+    return () => mq.removeListener(handler);
+  }, []);
+
+  const addLog = useCallback((log: string) => {
+    setConsoleLogs((prev) => [...prev, { id: nextId.current++, text: log }].slice(-200));
+  }, []);
+
+  const clearLogs = useCallback(() => setConsoleLogs([]), []);
 
   return (
     <UIContext.Provider value={{ consoleLogs, addLog, clearLogs, isDark, setIsDark, consoleOpen, setConsoleOpen }}>

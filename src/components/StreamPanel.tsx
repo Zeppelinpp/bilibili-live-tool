@@ -2,13 +2,16 @@ import { useState, useEffect } from 'react';
 import { useUser } from '@/context/AppContext';
 import { useLive } from '@/context/AppContext';
 import { useUI } from '@/context/AppContext';
-import { startLive, stopLive, updateTitle } from '@/hooks/useTauri';
+import { startLive, stopLive, updateTitle, updateArea, getPartitions } from '@/hooks/useTauri';
 
 export default function StreamPanel() {
   const { user } = useUser();
   const { isLive, setIsLive, streamCode, setStreamCode } = useLive();
   const { addLog } = useUI();
   const [title, setTitle] = useState(user?.last_title ?? '');
+  const [partitions, setPartitions] = useState<Record<string, string[]>>({});
+  const [parentArea, setParentArea] = useState('');
+  const [subArea, setSubArea] = useState('');
 
   useEffect(() => {
     if (user?.last_title) {
@@ -16,10 +19,61 @@ export default function StreamPanel() {
     }
   }, [user?.last_title]);
 
+  useEffect(() => {
+    let cancelled = false;
+    getPartitions()
+      .then((data) => {
+        if (cancelled) return;
+        setPartitions(data);
+        const parents = Object.keys(data);
+        if (parents.length === 0) return;
+        const firstParent = parents[0];
+        setParentArea(firstParent);
+        const subs = data[firstParent];
+        if (subs && subs.length > 0) {
+          setSubArea(subs[0]);
+        }
+      })
+      .catch((e: any) => {
+        if (cancelled) return;
+        console.error('获取分区失败:', e);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (Object.keys(partitions).length === 0) return;
+    const saved = user?.last_area_name;
+    if (saved && saved.length >= 2 && partitions[saved[0]]?.includes(saved[1])) {
+      setParentArea(saved[0]);
+      setSubArea(saved[1]);
+    }
+  }, [partitions, user?.last_area_name]);
+
+  const handleParentChange = (p: string) => {
+    setParentArea(p);
+    const subs = partitions[p] || [];
+    if (subs.length > 0) {
+      setSubArea(subs[0]);
+    } else {
+      setSubArea('');
+    }
+  };
+
+  const handleUpdateArea = async () => {
+    if (!parentArea || !subArea) return;
+    try {
+      await updateArea(parentArea, subArea);
+      addLog('分区已更新');
+    } catch (e: any) {
+      addLog(`更新分区失败: ${e}`);
+    }
+  };
+
   const handleStart = async () => {
     addLog('开始获取推流码...');
     try {
-      const data = await startLive();
+      const data = await startLive(parentArea || undefined, subArea || undefined);
       setStreamCode(data);
       setIsLive(true);
       addLog('开播成功！');
@@ -65,6 +119,37 @@ export default function StreamPanel() {
                   }
                 }}
                 className="h-9 px-4 rounded-lg bg-stone-800 dark:bg-stone-100 text-white dark:text-stone-900 text-[13px] font-medium hover:opacity-90 transition"
+              >
+                更新
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[13px] text-stone-600 dark:text-stone-400 mb-1.5">分区</label>
+            <div className="flex gap-2">
+              <select
+                value={parentArea}
+                onChange={(e) => handleParentChange(e.target.value)}
+                className="flex-1 h-9 px-3 rounded-lg bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-[13px] focus:outline-none focus:ring-2 focus:ring-stone-400/30 transition appearance-none"
+              >
+                {Object.keys(partitions).map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+              <select
+                value={subArea}
+                onChange={(e) => setSubArea(e.target.value)}
+                className="flex-1 h-9 px-3 rounded-lg bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-[13px] focus:outline-none focus:ring-2 focus:ring-stone-400/30 transition appearance-none"
+              >
+                {(partitions[parentArea] || []).map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+              <button
+                onClick={handleUpdateArea}
+                disabled={!parentArea || !subArea}
+                className="h-9 px-4 rounded-lg bg-stone-800 dark:bg-stone-100 text-white dark:text-stone-900 text-[13px] font-medium hover:opacity-90 transition disabled:opacity-50"
               >
                 更新
               </button>

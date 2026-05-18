@@ -33,8 +33,19 @@ fn main() {
             let quit_i = tauri::menu::PredefinedMenuItem::quit(app, Some("退出"))?;
             let menu = tauri::menu::Menu::with_items(app, &[&show_i, &start_i, &stop_i, &sep, &quit_i])?;
 
+            #[cfg(target_os = "macos")]
+            let tray_icon =
+                tauri::image::Image::from_bytes(include_bytes!("../icons/tray-icon-macos.png"))
+                    .expect("Failed to load macOS tray icon");
+            #[cfg(not(target_os = "macos"))]
+            let tray_icon = app
+                .default_window_icon()
+                .ok_or("No default window icon set")?
+                .clone();
+
             tauri::tray::TrayIconBuilder::with_id("main-tray")
-                .icon(app.default_window_icon().ok_or("No default window icon set")?.clone())
+                .icon(tray_icon)
+                .icon_as_template(cfg!(target_os = "macos"))
                 .tooltip("BiliLiveTool")
                 .menu(&menu)
                 .show_menu_on_left_click(false)
@@ -109,6 +120,7 @@ fn main() {
             bili_live_tool_lib::commands::user::get_account_list,
             bili_live_tool_lib::commands::user::switch_account,
             bili_live_tool_lib::commands::user::logout,
+            bili_live_tool_lib::commands::user::clear_session,
             bili_live_tool_lib::commands::live::get_partitions,
             bili_live_tool_lib::commands::live::update_title,
             bili_live_tool_lib::commands::live::update_area,

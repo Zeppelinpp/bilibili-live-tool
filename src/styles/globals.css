@@ -9,7 +9,7 @@
   }
 
   body {
-    @apply bg-stone-50 text-stone-800 dark:bg-stone-950 dark:text-stone-200;
+    @apply bg-white text-stone-800 dark:bg-stone-950 dark:text-stone-200;
   }
 
   ::-webkit-scrollbar {
@@ -19,10 +19,10 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(0,0,0,0.1);
+    background: rgba(0,0,0,0.12);
     border-radius: 4px;
   }
   .dark ::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.12);
   }
 }

@@ -137,10 +137,19 @@ fn build_user_config(
     room_id: &str,
     csrf: &str,
 ) -> UserConfig {
+    let face = nav["face"]
+        .as_str()
+        .filter(|s| !s.is_empty())
+        .or_else(|| nav["face_nft"].as_str().filter(|s| !s.is_empty()))
+        .unwrap_or("")
+        .to_string();
+    if face.is_empty() {
+        tracing::warn!("Bilibili API returned empty face for uid={}, nav keys: {:?}", uid, nav.as_object().map(|m| m.keys().collect::<Vec<_>>()));
+    }
     UserConfig {
         uid,
         uname: nav["uname"].as_str().unwrap_or("").to_string(),
-        face: nav["face"].as_str().unwrap_or("").to_string(),
+        face,
         cookie: cookie.to_string(),
         room_id: room_id.to_string(),
         csrf: csrf.to_string(),

@@ -1,13 +1,19 @@
-use crate::models::live::{PartitionMap, StreamCodeData};
+use crate::models::live::StreamCodeData;
 use crate::state::AppState;
+use std::collections::HashMap;
 use tauri::State;
 
 #[tauri::command]
-pub async fn get_partitions(state: State<'_, AppState>) -> Result<PartitionMap, String> {
+pub async fn get_partitions(state: State<'_, AppState>) -> Result<HashMap<String, Vec<String>>, String> {
     let api = state.api.lock().await;
     let mut live = crate::services::live_service::LiveService::new();
     live.refresh_partitions(&api).await.map_err(|e| e.to_string())?;
-    Ok(live.get_partitions())
+    let raw = live.get_partitions();
+    let mut result = HashMap::with_capacity(raw.len());
+    for (parent, subs) in raw {
+        result.insert(parent, subs.into_keys().collect());
+    }
+    Ok(result)
 }
 
 #[tauri::command]
@@ -38,6 +44,22 @@ pub async fn start_live(
     let mut session = state.session.lock().await;
     let mut live = crate::services::live_service::LiveService::new();
     let result = live.start_live(&api, &mut session, &mut config, p_name, s_name).await.map_err(|e| e.to_string())?;
+    let room_id = session.room_id.clone();
+    drop(api);
+    drop(config);
+    drop(session);
+
+    if let Some(room_id) = room_id {
+        if let Ok(room_id_num) = room_id.parse::<u64>() {
+            let danmaku_opt = state.danmaku.lock().await;
+            if let Some(danmaku) = danmaku_opt.as_ref() {
+                if !danmaku.is_running().await {
+                    danmaku.connect(room_id_num).await;
+                }
+            }
+        }
+    }
+
     Ok(result)
 }
 
@@ -46,5 +68,16 @@ pub async fn stop_live(state: State<'_, AppState>) -> Result<(), String> {
     let api = state.api.lock().await;
     let mut session = state.session.lock().await;
     let mut live = crate::services::live_service::LiveService::new();
-    live.stop_live(&api, &mut session).await.map_err(|e| e.to_string())
+    live.stop_live(&api, &mut session).await.map_err(|e| e.to_string())?;
+    drop(api);
+    drop(session);
+
+    let danmaku_opt = state.danmaku.lock().await;
+    if let Some(danmaku) = danmaku_opt.as_ref() {
+        if danmaku.is_running().await {
+            danmaku.disconnect().await;
+        }
+    }
+
+    Ok(())
 }

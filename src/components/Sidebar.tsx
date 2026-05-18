@@ -1,6 +1,10 @@
+import { useState, useEffect, useRef } from 'react';
 import { useUser } from '@/context/AppContext';
 import { useLive } from '@/context/AppContext';
+import { useUI } from '@/context/AppContext';
+import { logout, clearSession } from '@/hooks/useTauri';
 import { RadioTower, MessageSquare, User, Settings } from 'lucide-react';
+import LoginPanel from './LoginPanel';
 
 interface SidebarProps {
   activeTab: string;
@@ -14,17 +18,70 @@ const navItems = [
 ];
 
 export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
-  const { user } = useUser();
+  const { user, setUser } = useUser();
   const { isLive } = useLive();
+  const { addLog } = useUI();
+  const [showLogin, setShowLogin] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleLogout = async () => {
+    if (!user) return;
+    try {
+      await logout(user.uid);
+      setUser(null);
+      addLog('已退出登录');
+    } catch (e: any) {
+      addLog(`退出登录失败: ${e}`);
+    }
+    setShowMenu(false);
+  };
+
+  const handleSwitchUser = async () => {
+    if (!user) return;
+    try {
+      await clearSession();
+      setUser(null);
+      addLog('已退出当前账户');
+    } catch (e: any) {
+      addLog(`切换用户失败: ${e}`);
+    }
+    setShowMenu(false);
+    setShowLogin(true);
+  };
 
   return (
     <div className="w-52 bg-stone-50 dark:bg-stone-950 border-r border-stone-200 dark:border-stone-800 flex flex-col shrink-0">
       {/* User Card */}
-      <div className="px-3 pb-3 mb-2 border-b border-stone-200 dark:border-stone-800">
-        <div className="flex items-center gap-2.5 p-2.5 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-900 transition cursor-pointer">
-          <div className="w-8 h-8 rounded-full bg-stone-400 flex items-center justify-center text-white text-xs font-semibold">
-            {user?.uname?.[0] ?? '?'}
-          </div>
+      <div ref={menuRef} className="relative p-3 mb-2">
+        <div
+          onClick={() => {
+            if (user) {
+              setShowMenu((v) => !v);
+            } else {
+              setShowLogin((v) => !v);
+            }
+          }}
+          className={`flex items-center gap-2.5 p-2.5 rounded-lg transition cursor-pointer ${
+            user ? 'hover:bg-stone-100 dark:hover:bg-stone-900' : 'hover:bg-stone-100 dark:hover:bg-stone-900'
+          }`}
+        >
+          <img
+            src={user?.face || 'https://static.hdslb.com/images/member/noface.gif'}
+            className="w-8 h-8 rounded-full object-cover"
+            referrerPolicy="no-referrer"
+            alt=""
+          />
           <div className="flex-1 min-w-0">
             <div className="text-[13px] font-medium truncate">{user?.uname ?? '未登录'}</div>
             <div className="text-[11px] text-stone-400 truncate">
@@ -32,6 +89,25 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             </div>
           </div>
         </div>
+
+        {showMenu && user && (
+          <div className="absolute left-3 right-3 top-full mt-1 py-1 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-lg z-20">
+            <button
+              onClick={handleSwitchUser}
+              className="w-full px-3 py-2 text-[12px] text-left text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition"
+            >
+              切换用户
+            </button>
+            <button
+              onClick={handleLogout}
+              className="w-full px-3 py-2 text-[12px] text-left text-red-500 hover:bg-stone-100 dark:hover:bg-stone-800 transition"
+            >
+              退出登录
+            </button>
+          </div>
+        )}
+
+        {showLogin && !user && <LoginPanel onClose={() => setShowLogin(false)} />}
       </div>
 
       {/* Navigation */}
@@ -54,7 +130,7 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
           );
         })}
 
-        <div className="pt-4 mt-4 border-t border-stone-200 dark:border-stone-800">
+        <div className="pt-4 mt-4">
           <button
             onClick={() => onTabChange('settings')}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition ${
@@ -70,7 +146,7 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
       </nav>
 
       {/* Live Status */}
-      <div className="px-3 pt-2 border-t border-stone-200 dark:border-stone-800">
+      <div className="px-3 pt-2">
         <div className="flex items-center gap-2 px-3 py-2">
           <span className={`w-1.5 h-1.5 rounded-full ${isLive ? 'bg-green-500 animate-pulse' : 'bg-stone-300'}`} />
           <span className="text-[11px] text-stone-400">{isLive ? '直播中' : '未开播'}</span>
