@@ -1,5 +1,8 @@
 use std::sync::Arc;
 
+// Lock ordering rule to prevent deadlocks: api -> config -> session -> danmaku
+// All commands MUST acquire locks in this order and drop them promptly.
+
 #[derive(Default)]
 pub struct SessionState {
     pub uid: Option<u64>,

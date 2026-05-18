@@ -4,13 +4,14 @@ pub fn window_min(window: tauri::Window) {
 }
 
 #[tauri::command]
-pub fn window_max(window: tauri::Window) -> bool {
-    if window.is_maximized().unwrap_or(false) {
-        let _ = window.unmaximize();
+pub fn window_max(window: tauri::Window) -> Result<bool, String> {
+    let is_max = window.is_maximized().map_err(|e| e.to_string())?;
+    if is_max {
+        window.unmaximize().map_err(|e| e.to_string())?;
     } else {
-        let _ = window.maximize();
+        window.maximize().map_err(|e| e.to_string())?;
     }
-    true
+    Ok(!is_max)
 }
 
 #[tauri::command]

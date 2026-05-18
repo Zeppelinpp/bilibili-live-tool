@@ -11,6 +11,9 @@ pub async fn start_danmaku_monitor(state: State<'_, AppState>) -> Result<(), Str
 
     let danmaku_opt = state.danmaku.lock().await;
     if let Some(danmaku) = danmaku_opt.as_ref() {
+        if danmaku.is_running().await {
+            return Ok(());
+        }
         danmaku.connect(room_id_num).await;
     }
     Ok(())
@@ -27,11 +30,14 @@ pub async fn stop_danmaku_monitor(state: State<'_, AppState>) -> Result<(), Stri
 
 #[tauri::command]
 pub async fn send_danmaku(msg: String, state: State<'_, AppState>) -> Result<SendDanmakuResult, String> {
+    let (room_id_num, csrf) = {
+        let session = state.session.lock().await;
+        let room_id = session.room_id.clone().ok_or("未登录")?;
+        let room_id_num = room_id.parse::<u64>().map_err(|_| "房间号无效")?;
+        let csrf = session.csrf.clone().ok_or("未获取CSRF")?;
+        (room_id_num, csrf)
+    };
     let api = state.api.lock().await;
-    let session = state.session.lock().await;
-    let room_id = session.room_id.clone().ok_or("未登录")?;
-    let room_id_num = room_id.parse::<u64>().map_err(|_| "房间号无效")?;
-    let csrf = session.csrf.clone().ok_or("未获取CSRF")?;
     let res = api.send_danmaku(room_id_num, &msg, &csrf).await.map_err(|e| e.to_string())?;
     let code = res["code"].as_i64().unwrap_or(-1) as i32;
     let msg_text = match code {
