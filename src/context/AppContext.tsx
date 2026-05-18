@@ -132,7 +132,7 @@ const UIContext = createContext<UIState | null>(null);
 function UIProvider({ children }: { children: ReactNode }) {
   const [consoleLogs, setConsoleLogs] = useState<LogItem[]>([]);
   const [isDark, setIsDark] = useState(true);
-  const [consoleOpen, setConsoleOpen] = useState(true);
+  const [consoleOpen, setConsoleOpen] = useState(false);
   const nextId = useRef(0);
 
   useEffect(() => {
