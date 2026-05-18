@@ -8,23 +8,17 @@ import { Send, Trash2 } from 'lucide-react';
 // B站直播颜文字（如 [dog]）不在 reply/dynamic 官方 API 中，是客户端硬编码的。
 // 因此将已确认 URL 的颜文字手动映射，其余使用 unicode 兜底。
 const FALLBACK_EMOJI_MAP: Record<string, string> = {
+  // TODO: 更新官方 API 中的颜文字
   dog: 'https://i0.hdslb.com/bfs/emote/3087d273a78ccaff4bb1e9972e2ba2a7583c9f11.png',
   妙啊: '👍',
-  辣眼睛: '😵',
   吃瓜: '🍉',
-  滑稽: '😏',
   呲牙: '😁',
   打call: '📣',
-  歪嘴: '😏',
   酸了: '🍋',
   大哭: '😭',
   喜极而泣: '😂',
   笑哭: '😂',
   偷笑: '🤭',
-  生气: '😠',
-  无语: '😶',
-  害羞: '😳',
-  嫌弃: '😒',
   爱心: '❤️',
   胜利: '✌️',
   保佑: '🙏',
@@ -36,11 +30,8 @@ const FALLBACK_EMOJI_MAP: Record<string, string> = {
   黑洞: '🕳️',
   跪了: '🧎',
   给心心: '🫶',
-  哦呼: '😮',
-  嘟嘟: '😗',
   惊讶: '😲',
   再见: '👋',
-  抠鼻: '🤧',
   惊喜: '🤩',
   鼓掌: '👏',
 };
