@@ -1,11 +1,11 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use bili_live_tool_lib::services::bili_api::BiliApi;
-use bili_live_tool_lib::services::config_store::ConfigStore;
-use bili_live_tool_lib::services::danmaku_ws::DanmakuService;
-use bili_live_tool_lib::services::live_service::LiveService;
-use bili_live_tool_lib::services::user_service::UserService;
-use bili_live_tool_lib::state::{AppState, SessionState};
+use bilibili_streamer_lib::services::bili_api::BiliApi;
+use bilibili_streamer_lib::services::config_store::ConfigStore;
+use bilibili_streamer_lib::services::danmaku_ws::DanmakuService;
+use bilibili_streamer_lib::services::live_service::LiveService;
+use bilibili_streamer_lib::services::user_service::UserService;
+use bilibili_streamer_lib::state::{AppState, SessionState};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tauri::{Emitter, Manager};
@@ -81,7 +81,7 @@ fn main() {
             tauri::tray::TrayIconBuilder::with_id("main-tray")
                 .icon(tray_icon)
                 .icon_as_template(cfg!(target_os = "macos"))
-                .tooltip("BiliLiveTool")
+                .tooltip("Bilibili-Streamer")
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {
@@ -169,31 +169,31 @@ fn main() {
             }
         })
         .invoke_handler(tauri::generate_handler![
-            bili_live_tool_lib::commands::auth::get_login_qrcode,
-            bili_live_tool_lib::commands::auth::poll_login_status,
-            bili_live_tool_lib::commands::user::load_saved_config,
-            bili_live_tool_lib::commands::user::refresh_current_user,
-            bili_live_tool_lib::commands::user::get_account_list,
-            bili_live_tool_lib::commands::user::switch_account,
-            bili_live_tool_lib::commands::user::logout,
-            bili_live_tool_lib::commands::user::clear_session,
-            bili_live_tool_lib::commands::live::get_partitions,
-            bili_live_tool_lib::commands::live::update_title,
-            bili_live_tool_lib::commands::live::update_area,
-            bili_live_tool_lib::commands::live::start_live,
-            bili_live_tool_lib::commands::live::stop_live,
-            bili_live_tool_lib::commands::danmaku::start_danmaku_monitor,
-            bili_live_tool_lib::commands::danmaku::stop_danmaku_monitor,
-            bili_live_tool_lib::commands::danmaku::send_danmaku,
-            bili_live_tool_lib::commands::danmaku::get_emote_list,
-            bili_live_tool_lib::commands::window::window_min,
-            bili_live_tool_lib::commands::window::window_max,
-            bili_live_tool_lib::commands::window::window_close,
-            bili_live_tool_lib::commands::window::window_drag,
-            bili_live_tool_lib::commands::window::set_window_background,
-            bili_live_tool_lib::commands::config::get_app_config,
-            bili_live_tool_lib::commands::config::set_app_config,
-            bili_live_tool_lib::commands::config::get_version,
+            bilibili_streamer_lib::commands::auth::get_login_qrcode,
+            bilibili_streamer_lib::commands::auth::poll_login_status,
+            bilibili_streamer_lib::commands::user::load_saved_config,
+            bilibili_streamer_lib::commands::user::refresh_current_user,
+            bilibili_streamer_lib::commands::user::get_account_list,
+            bilibili_streamer_lib::commands::user::switch_account,
+            bilibili_streamer_lib::commands::user::logout,
+            bilibili_streamer_lib::commands::user::clear_session,
+            bilibili_streamer_lib::commands::live::get_partitions,
+            bilibili_streamer_lib::commands::live::update_title,
+            bilibili_streamer_lib::commands::live::update_area,
+            bilibili_streamer_lib::commands::live::start_live,
+            bilibili_streamer_lib::commands::live::stop_live,
+            bilibili_streamer_lib::commands::danmaku::start_danmaku_monitor,
+            bilibili_streamer_lib::commands::danmaku::stop_danmaku_monitor,
+            bilibili_streamer_lib::commands::danmaku::send_danmaku,
+            bilibili_streamer_lib::commands::danmaku::get_emote_list,
+            bilibili_streamer_lib::commands::window::window_min,
+            bilibili_streamer_lib::commands::window::window_max,
+            bilibili_streamer_lib::commands::window::window_close,
+            bilibili_streamer_lib::commands::window::window_drag,
+            bilibili_streamer_lib::commands::window::set_window_background,
+            bilibili_streamer_lib::commands::config::get_app_config,
+            bilibili_streamer_lib::commands::config::set_app_config,
+            bilibili_streamer_lib::commands::config::get_version,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
