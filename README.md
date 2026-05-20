@@ -20,6 +20,14 @@
 - **后端**: Rust (Tokio async runtime)
 - **目标平台**: macOS / Windows / Linux
 
+## 下载安装
+
+### macOS
+
+1. 前往 [Releases](https://github.com/Zeppelinpp/bilibili-streamer/releases/latest) 页面下载最新版 `.dmg`；
+2. 双击打开 `.dmg`，将 `Bilibili-Streamer.app` 拖入 **应用程序** 文件夹；
+3. 首次运行时若提示"无法打开"，前往 **系统设置 → 隐私与安全性**，点击 **仍要打开**。
+
 ## 使用教程
 
 1. 扫码登录 B 站账号；

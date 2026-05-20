@@ -3,273 +3,103 @@ name: Release BiliLiveTool
 on:
   push:
     tags:
-      - 'v*' # 触发标签：v1.0, v2.0.1 等
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
 
 jobs:
-  update-version:
-    name: Update VERSION
+  check-version:
+    name: Verify Version
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        ref: master
+      - uses: actions/checkout@v4
 
-    - name: Write and push VERSION
-      run: |
-        echo "${{ github.ref_name }}" > VERSION
-        git config user.name "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
-        git add VERSION
-        git diff --cached --quiet || git commit -m "chore: update VERSION to ${{ github.ref_name }}"
-        git push
-      shell: bash
+      - name: Check version consistency
+        run: |
+          TAG=${GITHUB_REF_NAME#v}
+          PKG=$(jq -r '.version' package.json)
+          TAURI=$(jq -r '.version' src-tauri/tauri.conf.json)
+          CARGO=$(grep '^version' src-tauri/Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+
+          echo "tag:     v$TAG"
+          echo "package: $PKG"
+          echo "tauri:   $TAURI"
+          echo "cargo:   $CARGO"
+
+          FAILED=0
+          if [ "$TAG" != "$PKG" ]; then
+            echo "::error::package.json version ($PKG) does not match tag (v$TAG)"
+            FAILED=1
+          fi
+          if [ "$TAG" != "$TAURI" ]; then
+            echo "::error::tauri.conf.json version ($TAURI) does not match tag (v$TAG)"
+            FAILED=1
+          fi
+          if [ "$TAG" != "$CARGO" ]; then
+            echo "::error::Cargo.toml version ($CARGO) does not match tag (v$TAG)"
+            FAILED=1
+          fi
+
+          if [ "$FAILED" = "1" ]; then
+            echo ""
+            echo "Please update version in package.json, src-tauri/tauri.conf.json, and src-tauri/Cargo.toml before pushing the tag."
+            exit 1
+          fi
+
+          echo "All versions match. Proceeding to build."
 
   build:
-    name: Build on ${{ matrix.os }}
-    needs: update-version
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        include:
-          - os: ubuntu-latest
-            asset_name_suffix: linux-amd64
-            pyinstaller_options: ""
-            icon_ext: "png"
-          - os: macos-latest
-            asset_name_suffix: macos-amd64
-            pyinstaller_options: "--windowed"
-            icon_ext: "icns"
-          - os: windows-latest
-            asset_name_suffix: windows-amd64
-            pyinstaller_options: "--noconsole"
-            icon_ext: "ico"
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        ref: master
-
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-
-    - name: Build Frontend
-      run: |
-        cd frontend
-        npm install
-        npm run build
-      shell: bash
-
-    - name: Install Backend Dependencies
-      run: |
-        pip install -r requirements.txt
-        pip install pyinstaller Pillow
-
-    - name: Install Linux Dependencies
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libxcb-xinerama0 libxcb-cursor0 libnss3 python3-dev \
-          libxcb-image0-dev libxkbcommon-x11-dev libxcb-xkb-dev libxcb-xinerama0-dev \
-          libxcb-keysyms1-dev libxcb-render-util0-dev libxcb-icccm4-dev libxcb-shape0-dev \
-          libpulse-dev \
-          pkg-config libglib2.0-dev libgirepository-2.0-dev libcairo2-dev \
-          gobject-introspection gir1.2-gtk-3.0
-          
-        # --- 核心修复：防止 GitHub setup-python 屏蔽系统级 C 库路径 ---
-        export PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig:$PKG_CONFIG_PATH
-        
-        pip install PyGObject
-
-    # --- 步骤：自动处理图标 (macOS转icns, Linux转png) ---
-    - name: Prepare Platform Icon
-      run: |
-        if [ "${{ matrix.os }}" == "macos-latest" ]; then
-          echo "Converting ICO to ICNS for macOS..."
-          sips -s format png bilibili.ico --out temp_icon.png
-          mkdir bilibili.iconset
-          sips -z 1024 1024 temp_icon.png --out bilibili.iconset/icon_512x512@2x.png
-          iconutil -c icns bilibili.iconset
-          rm -rf bilibili.iconset temp_icon.png
-        elif [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
-          echo "Converting ICO to PNG for Linux..."
-          python -c "from PIL import Image; Image.open('bilibili.ico').save('bilibili.png')"
-        fi
-      shell: bash
-
-
-    # --- 步骤：(核心) 动态生成 Windows 版本信息文件 ---
-    - name: Generate Windows Version Info
-      if: matrix.os == 'windows-latest'
-      run: |
-        cat <<EOF > generate_version.py
-        import sys
-        
-        tag = "${{ github.ref_name }}"
-        clean_ver = tag.lstrip('v') 
-        
-        parts = clean_ver.split('.')
-        while len(parts) < 4: parts.append('0')
-        ver_tuple = tuple(map(int, parts[:4]))
-        ver_str = clean_ver
-        
-        content = f"""
-        # UTF-8
-        VSVersionInfo(
-          ffi=FixedFileInfo(
-            filevers={ver_tuple},
-            prodvers={ver_tuple},
-            mask=0x3f,
-            flags=0x0,
-            OS=0x40004,
-            fileType=0x1,
-            subtype=0x0,
-            date=(0, 0)
-          ),
-          kids=[
-            StringFileInfo(
-              [
-                StringTable(
-                  u'040904B0',
-                  [StringStruct(u'CompanyName', u'BiliLiveTool Open Source'),
-                   StringStruct(u'FileDescription', u'BiliLiveTool Client'),
-                   StringStruct(u'FileVersion', u'{ver_str}'),
-                   StringStruct(u'InternalName', u'BiliLiveTool'),
-                   StringStruct(u'LegalCopyright', u'Copyright (c) 2026 Open Source'),
-                   StringStruct(u'OriginalFilename', u'BiliLiveTool.exe'),
-                   StringStruct(u'ProductName', u'BiliLiveTool'),
-                   StringStruct(u'ProductVersion', u'{ver_str}')])
-              ]
-            ),
-            VarFileInfo([VarStruct(u'Translation', [1033, 1200])])
-          ]
-        )
-        """
-        
-        with open("version_info.txt", "w", encoding="utf-8") as f:
-            f.write(content)
-            print(f"Generated version_info.txt for version {ver_str}")
-        EOF
-        
-        python generate_version.py
-      shell: bash
-
-    - name: Package with PyInstaller
-      run: |
-        ICON_NAME="bilibili.${{ matrix.icon_ext }}"
-        
-        EXTRA_ARGS=""
-        if [ "${{ matrix.os }}" == "windows-latest" ]; then
-           EXTRA_ARGS="--version-file=version_info.txt"
-            pyinstaller main.py \
-          --name BiliLiveTool \
-          --onefile \
-          --add-data "frontend/dist:frontend/dist" \
-          --add-data "bilibili.ico;." \
-          --add-data "VERSION;." \
-          --icon "$ICON_NAME" \
-          $EXTRA_ARGS \
-          ${{ matrix.pyinstaller_options }}
-        elif [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
-           pyinstaller main.py --name BiliLiveTool --onedir \
-            --add-data "frontend/dist:frontend/dist" \
-            --add-data "bilibili.ico:." \
-            --add-data "VERSION:." \
-            --hidden-import _cffi_backend \
-            --hidden-import cffi \
-            --hidden-import qtpy \
-            --hidden-import PyQt5 \
-            --hidden-import webview.platforms.qt\
-            --hidden-import brotli\
-            --collect-all cffi \
-            --collect-all brotli
-        elif [ "${{ matrix.os }}" == "macos-latest" ]; then
-            pyinstaller main.py \
-              --name BiliLiveTool \
-              --onefile \
-              --add-data "frontend/dist:frontend/dist" \
-              --add-data "bilibili.ico:." \
-              --add-data "VERSION:." \
-              --icon "$ICON_NAME" \
-              --hidden-import _cffi_backend \
-              $EXTRA_ARGS \
-              ${{ matrix.pyinstaller_options }}
-        fi
-
-      shell: bash
-
-    - name: Prepare Artifacts
-      run: |
-        VERSION="${{ github.ref_name }}"
-        if [ "${{ matrix.os }}" == "windows-latest" ]; then
-          EXE_NAME="BiliLiveTool.exe"
-          ASSET_NAME="BiliLiveTool-${VERSION}-${{ matrix.asset_name_suffix }}.zip"
-          mv dist/$EXE_NAME .
-          7z a $ASSET_NAME $EXE_NAME
-        elif [ "${{ matrix.os }}" == "macos-latest" ]; then
-          APP_NAME="BiliLiveTool.app"
-          ASSET_NAME="BiliLiveTool-${VERSION}-${{ matrix.asset_name_suffix }}.zip"
-          7z a -r $ASSET_NAME dist/$APP_NAME
-        else # Linux
-          ASSET_NAME="BiliLiveTool-${VERSION}-${{ matrix.asset_name_suffix }}.tar.gz"
-          tar -czvf $ASSET_NAME -C dist BiliLiveTool
-        fi
-        echo "ASSET_NAME=${ASSET_NAME}" >> $GITHUB_ENV
-      shell: bash
-
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: BiliLiveTool-${{ github.ref_name }}-${{ matrix.asset_name_suffix }}
-        path: ${{ env.ASSET_NAME }}
-
-  create-release:
-    name: Create GitHub Release
-    needs: build
-    runs-on: ubuntu-latest
+    name: Build on ${{ matrix.platform }}
+    needs: check-version
     permissions:
       contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'macos-latest'
+            args: '--target universal-apple-darwin'
+          - platform: 'ubuntu-22.04'
+            args: ''
+          - platform: 'windows-latest'
+            args: ''
 
+    runs-on: ${{ matrix.platform }}
     steps:
+      - uses: actions/checkout@v4
 
-    - name: Download all artifacts
-      uses: actions/download-artifact@v4
-      with:
-        path: artifacts
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-    - name: Create Release and Upload Assets
-      uses: softprops/action-gh-release@v1
-      with:
-        files: artifacts/*/*
-        body: |
-          ## 🚀 BiliLiveTool ${{ github.ref_name }} 发布
-          
-          ### 📦 下载地址
-          请根据您的系统选择：
-          - **Windows**: 下载 `.zip` 解压使用
-          - **macOS**: 下载 `.zip` 解压运行
-          - **Linux**: 下载 `.tar.gz`
+      - uses: dtolnay/rust-toolchain@stable
 
-          ### 🛡️ Windows 用户安全提示
-          如果您在 Windows 上运行遇到 **"Windows 已保护你的电脑"** (SmartScreen) 蓝框提示：
-          1. 点击 **"更多信息" (More Info)**
-          2. 点击 **"仍要运行" (Run Anyway)**
-          
-          > 这是因为开源软件未购买昂贵的数字证书，属于正常现象，请放心使用。
+      - name: Add macOS Rust targets
+        if: matrix.platform == 'macos-latest'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
 
-        draft: false
-        prerelease: false
-        generate_release_notes: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'BiliLiveTool ${{ github.ref_name }}'
+          releaseBody: |
+            ## BiliLiveTool ${{ github.ref_name }}
+
+            ### Downloads
+            - **macOS** (Intel & Apple Silicon): `.dmg`
+            - **Windows**: `.msi` installer
+            - **Linux**: `.AppImage`
+
+            > **Windows users:** If SmartScreen shows a warning, click "More info" → "Run anyway". This is normal for unsigned open-source software.
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}
