@@ -191,6 +191,8 @@ fn main() {
             bilibili_streamer_lib::commands::window::window_close,
             bilibili_streamer_lib::commands::window::window_drag,
             bilibili_streamer_lib::commands::window::set_window_background,
+            bilibili_streamer_lib::commands::window::open_danmaku_float,
+            bilibili_streamer_lib::commands::window::close_danmaku_float,
             bilibili_streamer_lib::commands::config::get_app_config,
             bilibili_streamer_lib::commands::config::set_app_config,
             bilibili_streamer_lib::commands::config::get_version,
