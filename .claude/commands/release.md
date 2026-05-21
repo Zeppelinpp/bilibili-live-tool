@@ -36,16 +36,18 @@ Also run `git diff --stat HEAD~1` or review the latest commits to summarize the 
 
 ## 6. Stage and commit
 
-Stage the version-bump files:
+Stage all the unstaged files:
 ```
-git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml
+git add .
 ```
 
-Commit with a conventional commit message:
+Commit with a conventional commit message, Make the workspace git status clean:
 ```
 chore(release): bump version to <version>
 
 <brief summary of main changes>
+
+<concise list of breaking changes>
 ```
 
 ## 7. Create and push tag

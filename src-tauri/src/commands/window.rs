@@ -27,21 +27,6 @@ fn is_position_visible(
     })
 }
 
-/// Return the primary monitor's center position for a window of the given size.
-fn center_on_primary_monitor(
-    width: f64,
-    height: f64,
-    app_handle: &tauri::AppHandle,
-) -> Option<(f64, f64)> {
-    let m = app_handle.primary_monitor().ok().flatten()?;
-    let pos = m.position();
-    let size = m.size();
-    Some((
-        pos.x as f64 + ((size.width as f64) - width).max(0.0) / 2.0,
-        pos.y as f64 + ((size.height as f64) - height).max(0.0) / 2.0,
-    ))
-}
-
 #[tauri::command]
 pub fn window_min(window: tauri::Window) {
     let _ = window.minimize();
@@ -85,23 +70,27 @@ pub async fn open_danmaku_float(
         return Ok(());
     }
 
-    // Read saved state or use defaults
     let config = state.config.lock().await;
     let saved = config.data().float_window.clone();
     drop(config);
 
-    let (mut phys_width, mut phys_height) = saved
+    // Decide target physical size. When there is no saved state we use 640×900
+    // physical pixels, which matches the logical default of 320×450 at a 2×
+    // scale factor (the primary target platform).
+    let target_size = saved
         .as_ref()
-        .map(|f| (f.width, f.height))
-        .unwrap_or((640.0, 900.0));
+        .map(|s| tauri::PhysicalSize {
+            width: s.width.clamp(200.0, 800.0) as u32,
+            height: s.height.clamp(200.0, 1200.0) as u32,
+        })
+        .unwrap_or(tauri::PhysicalSize {
+            width: 640,
+            height: 900,
+        });
 
-    // Clamp to reasonable bounds
-    phys_width = phys_width.clamp(200.0, 800.0);
-    phys_height = phys_height.clamp(200.0, 1200.0);
-
-    // Build with a default logical size; we restore the physical size after creation
-    // because builder.inner_size/position accept logical pixels, while saved values
-    // from inner_size()/outer_position() are physical pixels.
+    // Build the window with a logical fallback size. The physical size will be
+    // applied after creation so that restored values (which are physical) are
+    // respected regardless of the monitor's scale factor.
     let mut builder = tauri::WebviewWindowBuilder::new(
         &app_handle,
         "danmaku-float",
@@ -123,37 +112,22 @@ pub async fn open_danmaku_float(
 
     let window = builder.build().map_err(|e| e.to_string())?;
 
-    // Use saved position only if it is still visible on some monitor.
-    // Otherwise fall back to centering on the primary monitor.
-    let pos = saved.as_ref().and_then(|s| {
-        if is_position_visible(s.x, s.y, phys_width, phys_height, &app_handle) {
-            Some((s.x, s.y))
-        } else {
-            None
-        }
+    // Restore size first so that center() works with the correct dimensions.
+    let _ = window.set_size(tauri::Size::Physical(target_size));
+
+    // Restore position if it is still visible; otherwise center on the primary monitor.
+    let visible = saved.as_ref().is_some_and(|s| {
+        is_position_visible(s.x, s.y, target_size.width as f64, target_size.height as f64, &app_handle)
     });
 
-    if let Some((x, y)) = pos {
+    if visible {
+        let s = saved.unwrap(); // safe: we just checked is_some_and
         let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
-            x: x as i32,
-            y: y as i32,
+            x: s.x as i32,
+            y: s.y as i32,
         }));
-    } else if let Some((cx, cy)) =
-        center_on_primary_monitor(phys_width, phys_height, &app_handle)
-    {
-        let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
-            x: cx as i32,
-            y: cy as i32,
-        }));
-    }
-
-    // Restore physical size only when we have a saved state;
-    // otherwise leave the builder's default logical size in place.
-    if saved.is_some() {
-        let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize {
-            width: phys_width as u32,
-            height: phys_height as u32,
-        }));
+    } else {
+        let _ = window.center();
     }
 
     Ok(())
