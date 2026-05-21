@@ -2,11 +2,21 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
+pub struct FloatWindowState {
+    pub x: f64,
+    pub y: f64,
+    pub width: f64,
+    pub height: f64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct AppConfig {
     pub current_uid: Option<u64>,
     pub users: HashMap<String, UserConfig>,
     #[serde(default = "default_min_to_tray")]
     pub min_to_tray: bool,
+    #[serde(default)]
+    pub float_window: Option<FloatWindowState>,
 }
 
 fn default_min_to_tray() -> bool {
