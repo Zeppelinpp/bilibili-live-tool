@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useUser } from '@/context/AppContext';
 import { useLive } from '@/context/AppContext';
 import { useUI } from '@/context/AppContext';
-import { logout, clearSession } from '@/hooks/useTauri';
-import { RadioTower, MessageSquare, User, Settings } from 'lucide-react';
+import { logout, clearSession, openDanmakuFloat } from '@/hooks/useTauri';
+import { RadioTower, MessageSquare, User, Settings, LayoutPanelTop } from 'lucide-react';
 import LoginPanel from './LoginPanel';
 
 interface SidebarProps {
@@ -123,7 +123,19 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               }`}
             >
               <item.icon size={16} />
-              <span>{item.label}</span>
+              <span className="flex-1 text-left">{item.label}</span>
+              {item.id === 'danmaku' && isActive && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openDanmakuFloat().catch(() => {});
+                  }}
+                  className="w-6 h-6 rounded flex items-center justify-center text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-300 dark:hover:bg-[#4a454d] transition"
+                  title="浮窗"
+                >
+                  <LayoutPanelTop size={13} />
+                </button>
+              )}
             </button>
           );
         })}
