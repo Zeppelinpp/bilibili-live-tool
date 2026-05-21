@@ -28,6 +28,8 @@ Edit these three files to set the new version:
 - `src-tauri/tauri.conf.json`
 - `src-tauri/Cargo.toml`
 
+Then run `npm install --package-lock-only` to sync the version in `package-lock.json`.
+
 ## 5. Collect changes for release notes
 
 Run `git log --pretty=format:"- %s" <last-tag>..HEAD` to get commits since the last version tag. If this is empty or ambiguous, fall back to `git log --oneline -20`.
@@ -43,7 +45,7 @@ git add .
 
 Commit with a conventional commit message, Make the workspace git status clean:
 ```
-chore(release): bump version to <version>
+chore(release): release v<version>
 
 <brief summary of main changes>
 

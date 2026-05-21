@@ -10,7 +10,7 @@ pub struct ConfigStore {
 
 impl ConfigStore {
     pub fn new() -> Result<Self> {
-        let dir = directories::ProjectDirs::from("com", "bilitool", "BiliLiveTool")
+        let dir = directories::ProjectDirs::from("com", "bilibili-streamer", "Bilibili-Streamer")
             .ok_or_else(|| anyhow::anyhow!("Failed to get project dirs"))?;
         let config_dir = dir.config_dir();
         fs::create_dir_all(config_dir)?;

@@ -1,4 +1,4 @@
-name: Release BiliLiveTool
+name: Release Bilibili-Streamer
 
 on:
   push:
@@ -90,9 +90,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: 'BiliLiveTool ${{ github.ref_name }}'
+          releaseName: 'Bilibili-Streamer ${{ github.ref_name }}'
           releaseBody: |
-            ## BiliLiveTool ${{ github.ref_name }}
+            ## Bilibili-Streamer ${{ github.ref_name }}
 
             ### Downloads
             - **macOS** (Intel & Apple Silicon): `.dmg`

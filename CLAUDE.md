@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-BiliLiveTool — a Bilibili live streaming desktop app. **Tauri 2.x** (Rust + WebView) with a React 18 + TypeScript + Vite + Tailwind CSS frontend.
+Bilibili-Streamer — a Bilibili live streaming desktop app. **Tauri 2.x** (Rust + WebView) with a React 18 + TypeScript + Vite + Tailwind CSS frontend.
 
 ## Commands
 
