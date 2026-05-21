@@ -31,7 +31,7 @@ Tauri 2.x `WindowBuilder::always_on_top(true)` sets the macOS `NSWindow.level` t
 A compact overlay component (~320×450px by default) containing:
 
 - **Custom title bar / drag handle** (`-webkit-app-region: drag`) with:
-  - Left: "弹幕监控" label
+  - Left: "Monitor" label
   - Right: minimize (optional) and close buttons (`-webkit-app-region: no-drag`)
 - **Scrollable danmaku list** — reuses the same bubble rendering logic as `DanmakuPanel`:
   - Self-messages (orange, right-aligned)
