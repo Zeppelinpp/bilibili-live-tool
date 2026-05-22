@@ -21,4 +21,5 @@ pub struct AppState {
     pub danmaku: tokio::sync::Mutex<Option<crate::services::danmaku_ws::DanmakuService>>,
     pub live: tokio::sync::Mutex<crate::services::live_service::LiveService>,
     pub exiting: AtomicBool,
+    pub cleanup_complete: tokio::sync::Notify,
 }

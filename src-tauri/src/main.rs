@@ -14,18 +14,29 @@ async fn cleanup_and_exit(app_handle: tauri::AppHandle) {
     let state = app_handle.state::<AppState>();
     if state.exiting.swap(true, Ordering::SeqCst) {
         // Another task is already cleaning up; wait for it and exit
-        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-        std::process::exit(0);
+        let _ = tokio::time::timeout(
+            std::time::Duration::from_secs(10),
+            state.cleanup_complete.notified(),
+        )
+        .await;
+        app_handle.exit(0);
+        return;
     }
-    let api = state.api.lock().await;
-    let mut session = state.session.lock().await;
-    if session.is_live {
-        let mut live = LiveService::new();
-        if let Err(e) = live.stop_live(&api, &mut session).await {
-            tracing::error!("Failed to stop live on exit: {}", e);
+
+    let cleanup_fut = async {
+        let api = state.api.lock().await;
+        let mut session = state.session.lock().await;
+        if session.is_live {
+            let mut live = state.live.lock().await;
+            if let Err(e) = live.stop_live(&api, &mut session).await {
+                tracing::error!("Failed to stop live on exit: {}", e);
+            }
         }
-    }
-    std::process::exit(0);
+    };
+
+    let _ = tokio::time::timeout(std::time::Duration::from_secs(10), cleanup_fut).await;
+    state.cleanup_complete.notify_waiters();
+    app_handle.exit(0);
 }
 
 fn main() {
@@ -54,6 +65,7 @@ fn main() {
                 danmaku: tokio::sync::Mutex::new(Some(danmaku)),
                 live: tokio::sync::Mutex::new(LiveService::new()),
                 exiting: AtomicBool::new(false),
+                cleanup_complete: tokio::sync::Notify::new(),
             });
 
             // System tray

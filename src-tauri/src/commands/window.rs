@@ -117,7 +117,13 @@ pub async fn open_danmaku_float(
 
     // Restore position if it is still visible; otherwise center on the primary monitor.
     let visible = saved.as_ref().is_some_and(|s| {
-        is_position_visible(s.x, s.y, target_size.width as f64, target_size.height as f64, &app_handle)
+        is_position_visible(
+            s.x,
+            s.y,
+            target_size.width as f64,
+            target_size.height as f64,
+            &app_handle,
+        )
     });
 
     if visible {

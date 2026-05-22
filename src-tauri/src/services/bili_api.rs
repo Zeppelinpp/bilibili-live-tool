@@ -423,28 +423,24 @@ impl BiliApi {
                 .await?;
             let code = res["code"].as_i64().unwrap_or(-1);
             if code != 0 {
-                tracing::warn!(
-                    "get_emote_list live emoticon returned code={}",
-                    code
-                );
+                tracing::warn!("get_emote_list live emoticon returned code={}", code);
             } else {
                 let data = &res["data"];
                 // 尝试多种可能的嵌套结构
-                let packages = data["packages"].as_array()
+                let packages = data["packages"]
+                    .as_array()
                     .or_else(|| data["data"].as_array());
                 if let Some(pkgs) = packages {
-                    tracing::info!(
-                        "get_emote_list live emoticon packages={}",
-                        pkgs.len()
-                    );
+                    tracing::info!("get_emote_list live emoticon packages={}", pkgs.len());
                     for pkg in pkgs {
-                        let emote_arr = pkg["emote"].as_array()
+                        let emote_arr = pkg["emote"]
+                            .as_array()
                             .or_else(|| pkg["emotes"].as_array())
                             .or_else(|| pkg["emoticons"].as_array());
                         if let Some(emotes) = emote_arr {
                             for emote in emotes {
-                                let text = emote["text"].as_str()
-                                    .or_else(|| emote["emoji"].as_str());
+                                let text =
+                                    emote["text"].as_str().or_else(|| emote["emoji"].as_str());
                                 let url = emote["url"].as_str();
                                 if let (Some(t), Some(u)) = (text, url) {
                                     map.insert(t.to_string(), u.to_string());
